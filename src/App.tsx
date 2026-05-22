@@ -1,3 +1,4 @@
+
 import { Navigate, Route, Routes } from "react-router-dom";
 import { BusinessAuthPage } from "./pages/BusinessAuthPage";
 import { BusinessCatalogPage } from "./pages/BusinessCatalogPage";
@@ -14,8 +15,10 @@ import { TutorialsPage } from "./pages/TutorialsPage";
 import { UserAuthPage } from "./pages/UserAuthPage";
 import { UserCatalogPage } from "./pages/UserCatalogPage";
 import { UserProfilePage } from "./pages/UserProfilePage";
+import { BusinessReservationsPage } from "./pages/BusinessReservationsPage";
 
 export default function App() {
+  
   return (
     <Routes>
       <Route path="/" element={<HomePage />} />
@@ -35,6 +38,7 @@ export default function App() {
       <Route path="/usuarios/reservas" element={<ReservationsPage />} />
       <Route path="/usuarios" element={<Navigate to="/usuarios/perfil" replace />} />
       <Route path="/comercios" element={<Navigate to="/comercios/panel" replace />} />
+      <Route path="/comercios/reservas" element={<BusinessReservationsPage />} />
       <Route path="*" element={<NotFoundPage />} />
     </Routes>
   );

@@ -1,3 +1,4 @@
+import { supabase } from "../lib/supabase";
 import { FormEvent, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { AppNav } from "../components/AppNav";
@@ -9,11 +10,78 @@ export function BusinessAuthPage() {
   const [message, setMessage] = useState("");
   const navigate = useNavigate();
 
-  function submit(event: FormEvent) {
-    event.preventDefault();
-    setMessage(mode === "register" ? "Comercio registrado en modo prototipo." : "Sesión iniciada en modo prototipo.");
-    window.setTimeout(() => navigate("/comercios/panel"), 600);
+  async function submit(event: FormEvent<HTMLFormElement>) {
+  event.preventDefault();
+
+  const form = event.currentTarget;
+
+  if (mode === "register") {
+    const businessName = form.querySelector<HTMLInputElement>("#businessName")?.value || "";
+    const cif = form.querySelector<HTMLInputElement>("#cif")?.value || "";
+    const responsible = form.querySelector<HTMLInputElement>("#responsible")?.value || "";
+    const phone = form.querySelector<HTMLInputElement>("#phone")?.value || "";
+    const email = form.querySelector<HTMLInputElement>("#email")?.value || "";
+    const size = form.querySelector<HTMLSelectElement>("#size")?.value || "";
+    const password = form.querySelector<HTMLInputElement>("#password")?.value || "";
+    const confirmPassword = form.querySelector<HTMLInputElement>("#confirmPassword")?.value || "";
+
+    if (password !== confirmPassword) {
+      setMessage("Las contraseñas no coinciden.");
+      return;
+    }
+
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+    });
+
+    if (error) {
+      setMessage(error.message);
+      return;
+    }
+
+    await supabase.from("profiles").insert({
+      id: data.user?.id,
+      role: "comercio",
+      nombre: businessName,
+      email,
+    });
+
+    const { error: comercioError } = await supabase.from("comercios").insert({
+      owner_id: data.user?.id,
+      nombre: businessName,
+      cif,
+      responsable: responsible,
+      telefono: phone,
+      email,
+      trabajadores: size,
+    });
+
+    if (comercioError) {
+      setMessage(comercioError.message);
+      return;
+    }
+
+    setMessage("Comercio registrado correctamente.");
+  } else {
+    const email = form.querySelector<HTMLInputElement>("#loginEmail")?.value || "";
+    const password = form.querySelector<HTMLInputElement>("#loginPassword")?.value || "";
+
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (error) {
+      setMessage(error.message);
+      return;
+    }
+
+    setMessage("Sesión iniciada correctamente.");
   }
+
+  window.setTimeout(() => navigate("/comercios/panel"), 600);
+}
 
   return (
     <div className="page-shell">

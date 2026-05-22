@@ -3,22 +3,33 @@ import { AppNav } from "../components/AppNav";
 import { PageHeader } from "../components/PageHeader";
 import { supabase } from "../lib/supabase";
 
-export function ReservationsPage() {
-  const [reservations, setReservations] = useState<any[]>([]);
+export function BusinessReservationsPage() {
+  const [reservas, setReservas] = useState<any[]>([]);
   const [message, setMessage] = useState("");
 
-  async function loadReservations() {
+  async function loadReservas() {
     const { data: authData } = await supabase.auth.getUser();
 
     if (!authData.user) {
-      setMessage("No hay usuario iniciado.");
+      setMessage("No hay comercio iniciado.");
+      return;
+    }
+
+    const { data: comercio } = await supabase
+      .from("comercios")
+      .select("*")
+      .eq("owner_id", authData.user.id)
+      .single();
+
+    if (!comercio) {
+      setMessage("No se ha encontrado el comercio asociado.");
       return;
     }
 
     const { data, error } = await supabase
       .from("reservas")
-      .select("*, productos(*), comercios(*)")
-      .eq("user_id", authData.user.id)
+      .select("*, productos(*)")
+      .eq("comercio_id", comercio.id)
       .order("created_at", { ascending: false });
 
     if (error) {
@@ -26,17 +37,17 @@ export function ReservationsPage() {
       return;
     }
 
-    setReservations(data || []);
+    setReservas(data || []);
   }
 
   useEffect(() => {
-    loadReservations();
+    loadReservas();
   }, []);
 
-  async function cancelReservation(id: string) {
+  async function marcarCompletada(id: string) {
     const { error } = await supabase
       .from("reservas")
-      .update({ estado: "cancelada" })
+      .update({ estado: "completada" })
       .eq("id", id);
 
     if (error) {
@@ -44,16 +55,16 @@ export function ReservationsPage() {
       return;
     }
 
-    setMessage("Reserva anulada correctamente.");
-    await loadReservations();
+    setMessage("Reserva marcada como completada.");
+    await loadReservas();
   }
 
   return (
     <div className="page-shell">
-      <AppNav mode="user" />
+      <AppNav mode="business" />
       <main className="content-wrap">
-        <PageHeader eyebrow="Mis reservas" title="Reservas para recogida en tienda">
-          Puedes anular una reserva hasta 2 horas antes de la fecha y hora de recogida.
+        <PageHeader eyebrow="Reservas recibidas" title="Gestión de reservas">
+          Consulta las reservas realizadas por los usuarios y actualiza su estado.
         </PageHeader>
 
         {message ? (
@@ -63,39 +74,35 @@ export function ReservationsPage() {
         ) : null}
 
         <div className="grid gap-4">
-          {reservations.length ? (
-            reservations.map((reservation) => (
-              <article className="card grid gap-4 md:grid-cols-[1fr_auto]" key={reservation.id}>
+          {reservas.length ? (
+            reservas.map((reserva) => (
+              <article className="card grid gap-4 md:grid-cols-[1fr_auto]" key={reserva.id}>
                 <div>
                   <p className="text-sm font-black uppercase text-barrio-green">
-                    {reservation.estado}
+                    {reserva.estado}
                   </p>
 
                   <h2 className="text-2xl font-black text-barrio-deep">
-                    {reservation.productos?.nombre || "Producto"}
+                    {reserva.productos?.nombre || "Producto reservado"}
                   </h2>
 
-                  <p className="mt-2 font-semibold text-black/75">
-                    {reservation.comercios?.nombre || "Comercio"}
-                  </p>
-
                   <p className="text-black/70">
-                    Fecha: {reservation.fecha} · Hora: {reservation.hora}
+                    Fecha: {reserva.fecha} · Hora: {reserva.hora}
                   </p>
                 </div>
 
                 <button
                   className="btn-secondary self-center disabled:cursor-not-allowed disabled:opacity-50"
                   type="button"
-                  disabled={reservation.estado !== "activa"}
-                  onClick={() => cancelReservation(reservation.id)}
+                  disabled={reserva.estado !== "activa"}
+                  onClick={() => marcarCompletada(reserva.id)}
                 >
-                  Anular reserva
+                  Marcar completada
                 </button>
               </article>
             ))
           ) : (
-            <p className="card text-black/70">Todavía no tienes reservas.</p>
+            <p className="card text-black/70">Todavía no tienes reservas recibidas.</p>
           )}
         </div>
       </main>
